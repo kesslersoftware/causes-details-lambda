@@ -7,6 +7,7 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent
 import com.boycottpro.models.Causes;
 import com.boycottpro.models.ResponseMessage;
 import com.boycottpro.utilities.CausesUtility;
+import com.boycottpro.utilities.JwtUtility;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
@@ -34,6 +35,8 @@ public class GetCauseDetailsHandler implements
     @Override
     public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent event, Context context) {
         try {
+            String sub = JwtUtility.getSubFromRestEvent(event);
+            if (sub == null) return response(401, "Unauthorized");
             Map<String, String> pathParams = event.getPathParameters();
             String causeId = (pathParams != null) ? pathParams.get("cause_id") : null;
             if (causeId == null || causeId.isEmpty()) {
@@ -41,10 +44,7 @@ public class GetCauseDetailsHandler implements
                         "sorry, there was an error processing your request",
                         "cause_id not present");
                 String responseBody = objectMapper.writeValueAsString(message);
-                return new APIGatewayProxyResponseEvent()
-                        .withStatusCode(400)
-                        .withHeaders(Map.of("Content-Type", "application/json"))
-                        .withBody(responseBody);
+                return response(400,responseBody);
             }
             Causes causes = getCausesById(causeId);
             if (causes == null) {
@@ -52,17 +52,11 @@ public class GetCauseDetailsHandler implements
                         "sorry, there was an error processing your request",
                         "causes record could not be found");
                 String responseBody = objectMapper.writeValueAsString(message);
-                return new APIGatewayProxyResponseEvent()
-                        .withStatusCode(500)
-                        .withHeaders(Map.of("Content-Type", "application/json"))
-                        .withBody(responseBody);
+                return response(500,responseBody);
             }
             String responseBody = objectMapper.writeValueAsString(causes);
             System.out.println("RESPONSE = " + responseBody);
-            return new APIGatewayProxyResponseEvent()
-                    .withStatusCode(200)
-                    .withHeaders(Map.of("Content-Type", "application/json"))
-                    .withBody(responseBody);
+            return response(200,responseBody);
         } catch (Exception e) {
             e.printStackTrace();
             ResponseMessage message = new ResponseMessage(500,
@@ -76,11 +70,14 @@ public class GetCauseDetailsHandler implements
                 ex.printStackTrace();
                 throw new RuntimeException(ex);
             }
-            return new APIGatewayProxyResponseEvent()
-                    .withStatusCode(500)
-                    .withHeaders(Map.of("Content-Type", "application/json"))
-                    .withBody(responseBody);
+            return response(500,responseBody);
         }
+    }
+    private APIGatewayProxyResponseEvent response(int status, String body) {
+        return new APIGatewayProxyResponseEvent()
+                .withStatusCode(status)
+                .withHeaders(Map.of("Content-Type", "application/json"))
+                .withBody(body);
     }
     private Causes getCausesById(String causesId) {
         GetItemRequest request = GetItemRequest.builder()

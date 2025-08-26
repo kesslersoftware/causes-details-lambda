@@ -15,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.*;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -38,7 +39,15 @@ public class GetCauseDetailsHandlerTest {
     public void testValidCauseIdReturnsCause() throws Exception {
         String causeId = "c1";
         Map<String, String> pathParams = Map.of("cause_id", causeId); // note: still using "user_id" key as in handler
-        APIGatewayProxyRequestEvent event = new APIGatewayProxyRequestEvent().withPathParameters(pathParams);
+        APIGatewayProxyRequestEvent event = new APIGatewayProxyRequestEvent()
+                .withPathParameters(pathParams);
+        Map<String, String> claims = Map.of("sub", "11111111-2222-3333-4444-555555555555");
+        Map<String, Object> authorizer = new HashMap<>();
+        authorizer.put("claims", claims);
+
+        APIGatewayProxyRequestEvent.ProxyRequestContext rc = new APIGatewayProxyRequestEvent.ProxyRequestContext();
+        rc.setAuthorizer(authorizer);
+        event.setRequestContext(rc);
 
         Map<String, AttributeValue> item = Map.ofEntries(
                 Map.entry("cause_id", AttributeValue.fromS("c1")),
@@ -61,6 +70,13 @@ public class GetCauseDetailsHandlerTest {
     public void testMissingCauseIdReturns400() throws JsonProcessingException {
         APIGatewayProxyRequestEvent event = new APIGatewayProxyRequestEvent()
                 .withPathParameters(Map.of("cause_id", ""));
+        Map<String, String> claims = Map.of("sub", "11111111-2222-3333-4444-555555555555");
+        Map<String, Object> authorizer = new HashMap<>();
+        authorizer.put("claims", claims);
+
+        APIGatewayProxyRequestEvent.ProxyRequestContext rc = new APIGatewayProxyRequestEvent.ProxyRequestContext();
+        rc.setAuthorizer(authorizer);
+        event.setRequestContext(rc);
 
         APIGatewayProxyResponseEvent response = handler.handleRequest(event, context);
 
@@ -73,8 +89,15 @@ public class GetCauseDetailsHandlerTest {
     public void testCauseNotFoundReturnsError() throws JsonProcessingException {
         String causeId = "unknown";
         Map<String, String> pathParams = Map.of("cause_id", causeId);
-        APIGatewayProxyRequestEvent event = new APIGatewayProxyRequestEvent().withPathParameters(pathParams);
+        APIGatewayProxyRequestEvent event = new APIGatewayProxyRequestEvent()
+                .withPathParameters(pathParams);
+        Map<String, String> claims = Map.of("sub", "11111111-2222-3333-4444-555555555555");
+        Map<String, Object> authorizer = new HashMap<>();
+        authorizer.put("claims", claims);
 
+        APIGatewayProxyRequestEvent.ProxyRequestContext rc = new APIGatewayProxyRequestEvent.ProxyRequestContext();
+        rc.setAuthorizer(authorizer);
+        event.setRequestContext(rc);
         when(dynamoDb.getItem(any(GetItemRequest.class)))
                 .thenReturn(GetItemResponse.builder().build());
 
@@ -89,8 +112,15 @@ public class GetCauseDetailsHandlerTest {
     public void testUnexpectedExceptionReturns500() throws JsonProcessingException {
         String causeId = "crash";
         Map<String, String> pathParams = Map.of("cause_id", causeId);
-        APIGatewayProxyRequestEvent event = new APIGatewayProxyRequestEvent().withPathParameters(pathParams);
+        APIGatewayProxyRequestEvent event = new APIGatewayProxyRequestEvent()
+                .withPathParameters(pathParams);
+        Map<String, String> claims = Map.of("sub", "11111111-2222-3333-4444-555555555555");
+        Map<String, Object> authorizer = new HashMap<>();
+        authorizer.put("claims", claims);
 
+        APIGatewayProxyRequestEvent.ProxyRequestContext rc = new APIGatewayProxyRequestEvent.ProxyRequestContext();
+        rc.setAuthorizer(authorizer);
+        event.setRequestContext(rc);
         when(dynamoDb.getItem(any(GetItemRequest.class)))
                 .thenThrow(new RuntimeException("Boom"));
 
