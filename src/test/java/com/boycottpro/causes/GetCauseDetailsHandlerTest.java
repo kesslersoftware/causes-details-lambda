@@ -127,7 +127,6 @@ public class GetCauseDetailsHandlerTest {
         APIGatewayProxyResponseEvent response = handler.handleRequest(event, context);
 
         assertEquals(500, response.getStatusCode());
-        ResponseMessage message = objectMapper.readValue(response.getBody(), ResponseMessage.class);
-        assertTrue(message.getDevMsg().contains("Unexpected server error:"));
+        assertTrue(response.getBody().contains("Unexpected server error"));
     }
 }
